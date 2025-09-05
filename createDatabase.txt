@@ -3,9 +3,11 @@ CREATE DATABASE NODEMYSQL;
 USE NODEMYSQL;
 
 CREATE TABLE IF NOT EXISTS Clientes(
-	ID int NOT NULL AUTO_INCREMENT,
+    id int NOT NULL AUTO_INCREMENT,
     Nome varchar(150) NOT NULL,
     Idade int NOT NULL,
     UF char(2) NOT NULL,
-    PRIMARY KEY(ID)
+    PRIMARY KEY(id)
 );
+
+INSERT INTO `clientes` (`ID`, `Nome`, `Idade`, `UF`) VALUES (NULL, 'Emerson', '60', 'SP'), (NULL, 'Ricardo', '22', 'RJ');
