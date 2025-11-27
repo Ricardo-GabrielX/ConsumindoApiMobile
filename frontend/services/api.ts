@@ -1,3 +1,11 @@
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+// --- CONFIGURAÇÃO RÁPIDA PARA AULA ---
+// Se não conectar, olhe o terminal do backend e coloque o IP aqui:
+const MANUAL_IP = '172.68.1.186'; // <--- EX: Mude isso na aula se precisar!
+const PORT = '3000';
+
 export interface Cliente {
   id?: number;
   Nome: string;
@@ -5,13 +13,23 @@ export interface Cliente {
   UF: string;
 }
 
-// Detecta se está no ambiente web
-const isWeb = typeof document !== 'undefined';
+const getBaseUrl = () => {
+  if (Platform.OS === 'web') return `http://localhost:${PORT}`;
 
-// Para web, usamos localhost, para dispositivo físico, usamos o IP
-const API_BASE_URL = isWeb 
-  ? 'http://localhost:3000' 
-  : 'http://192.168.1.100:3000'; // Substitua pelo seu IP
+  // Tenta pegar o IP automaticamente do Expo
+  const debuggerHost = Constants.expoConfig?.hostUri;
+  const autoIp = debuggerHost?.split(':')[0];
+
+  if (autoIp) {
+    console.log('📡 IP Detectado automaticamente:', autoIp);
+    return `http://${autoIp}:${PORT}`;
+  }
+
+  console.log('⚠️ Usando IP Manual:', MANUAL_IP);
+  return `http://${MANUAL_IP}:${PORT}`;
+};
+
+const API_BASE_URL = getBaseUrl();
 
 class ApiService {
   private baseURL: string;
@@ -20,106 +38,52 @@ class ApiService {
     this.baseURL = API_BASE_URL;
   }
 
-  async getClientes(): Promise<Cliente[]> {
-    try {
-      const response = await fetch(`${this.baseURL}/`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Erro ao buscar clientes:', error);
-      throw error;
+  // Helper para lidar com erros de fetch
+  private async handleResponse(response: Response) {
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Erro API: ${response.status} - ${text}`);
     }
+    return response.json();
+  }
+
+  async getClientes(): Promise<Cliente[]> {
+    const response = await fetch(`${this.baseURL}/`);
+    return this.handleResponse(response);
   }
 
   async getClienteById(id: number): Promise<Cliente> {
-    try {
-      const response = await fetch(`${this.baseURL}/clientes/${id}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      return data[0];
-    } catch (error) {
-      console.error('Erro ao buscar cliente:', error);
-      throw error;
-    }
+    const response = await fetch(`${this.baseURL}/clientes/${id}`);
+    const data = await this.handleResponse(response);
+    // Garante que retorna um objeto, mesmo se o backend mandar array
+    return Array.isArray(data) ? data[0] : data;
   }
 
   async createCliente(cliente: Omit<Cliente, 'id'>): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseURL}/clientes/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(cliente),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Erro ao criar cliente:', error);
-      throw error;
-    }
+    const response = await fetch(`${this.baseURL}/clientes/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cliente),
+    });
+    return this.handleResponse(response);
   }
 
   async updateCliente(id: number, cliente: Omit<Cliente, 'id'>): Promise<any> {
-    try {
-      const response = await fetch(`${this.baseURL}/clientes/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(cliente),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Erro ao atualizar cliente:', error);
-      throw error;
-    }
+    const response = await fetch(`${this.baseURL}/clientes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cliente),
+    });
+    return this.handleResponse(response);
   }
 
-  async deleteCliente(id: number): Promise<{ success: boolean; message: string }> {
-    try {
-      const response = await fetch(`${this.baseURL}/clientes/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      console.log('Status da resposta delete:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      console.log('Resposta JSON delete:', result);
-      
-      return result;
-    } catch (error) {
-      console.error('Erro ao deletar cliente:', error);
-      throw error;
-    }
-  }
-
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseURL}/`);
-      return response.ok;
-    } catch (error) {
-      console.error('Erro de conexão:', error);
-      return false;
-    }
+  async deleteCliente(id: number): Promise<any> {
+    console.log(`Deletando cliente ${id} na URL: ${this.baseURL}/clientes/${id}`);
+    const response = await fetch(`${this.baseURL}/clientes/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return this.handleResponse(response);
   }
 }
 
